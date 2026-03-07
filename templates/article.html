@@ -185,13 +185,83 @@
                 padding: 20px;
             }
         }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .article-container {
+            background: #2d2d2d;
+        }
+
+        body.dark-mode .article-header {
+            border-bottom-color: #444;
+        }
+
+        body.dark-mode .article-title {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .article-body {
+            color: #ccc;
+        }
+
+        body.dark-mode .related-section {
+            border-top-color: #444;
+        }
+
+        body.dark-mode .related-title {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .related-item {
+            background: #333;
+        }
+
+        body.dark-mode .related-item:hover {
+            background: #444;
+        }
+
+        body.dark-mode .related-item a {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode footer {
+            color: #888;
+            border-top-color: #444;
+        }
+
+        .dark-mode-toggle {
+            padding: 8px 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+
+        body.dark-mode .dark-mode-toggle {
+            background: rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255,255,255,0.2);
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="header-content">
             <h1>X 广告格式新闻</h1>
-            <a href="/" class="back-link">← 返回首页</a>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙</button>
+                <a href="/" class="back-link">← 返回首页</a>
+            </div>
         </div>
     </header>
 
@@ -241,5 +311,20 @@
     <footer>
         <p>TechCrunch X Ad Format News Reader | Powered by Flask</p>
     </footer>
+
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            document.querySelector('.dark-mode-toggle').textContent = isDark ? '☀️' : '🌙';
+        }
+
+        // Check saved preference on load
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.dark-mode-toggle').textContent = '☀️';
+        }
+    </script>
 </body>
 </html>

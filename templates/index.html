@@ -214,9 +214,85 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .article-card {
+            background: #2d2d2d;
+        }
+
+        body.dark-mode .article-title {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .article-summary {
+            color: #aaa;
+        }
+
+        body.dark-mode .article-meta {
+            color: #888;
+        }
+
+        body.dark-mode .btn {
+            background: #444;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .btn:hover {
+            background: #555;
+        }
+
+        body.dark-mode .search-box input {
+            background: #333;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .pagination a {
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .pagination .current {
+            background: #00d4ff;
+            color: #1a1a1a;
+        }
+
+        body.dark-mode footer {
+            color: #888;
+            border-top-color: #444;
+        }
+
+        .dark-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 1000;
+            transition: background 0.2s;
+        }
+
+        body.dark-mode .dark-mode-toggle {
+            background: rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .dark-mode-toggle:hover {
+            background: rgba(255,255,255,0.2);
+        }
     </style>
 </head>
 <body>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙</button>
     <header>
         <div class="header-content">
             <h1>X 广告格式新闻</h1>
@@ -293,5 +369,20 @@
     <footer>
         <p>TechCrunch X Ad Format News Reader | Powered by Flask</p>
     </footer>
+
+    <script>
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark);
+            document.querySelector('.dark-mode-toggle').textContent = isDark ? '☀️' : '🌙';
+        }
+
+        // Check saved preference on load
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.dark-mode-toggle').textContent = '☀️';
+        }
+    </script>
 </body>
 </html>

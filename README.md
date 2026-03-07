@@ -14,6 +14,7 @@ A Flask web application for fetching and displaying TechCrunch news about X's ne
 - API 接口 / API endpoint
 - 文章缓存机制 / Article caching
 - CLI 和 Web 两种运行模式 / CLI and Web run modes
+- 深色模式支持 / Dark mode support
 
 ## 项目结构 / Project Structure
 
@@ -106,10 +107,8 @@ python main.py --mode cli
 - BeautifulSoup4 - HTML 解析
 - Jinja2 - 模板引擎
 
-## 许可证 / License
-
-MIT License
-
 ## 作者 / Author
 
 Created with Claude Code
+
+作者: stlin256的openclaw
