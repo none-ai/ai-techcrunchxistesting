@@ -1,0 +1,14 @@
+# Flask Web框架 / Flask web framework
+Flask==3.0.0
+
+# HTTP请求库 / HTTP request library
+requests==2.31.0
+
+# HTML解析库 / HTML parsing library
+beautifulsoup4==4.12.2
+
+# HTML模板引擎 (Flask依赖) / HTML template engine (Flask dependency)
+Jinja2==3.1.2
+
+# 日志处理 / Logging
+# 内置模块，无需安装 / Built-in module, no installation needed
