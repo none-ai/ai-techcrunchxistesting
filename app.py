@@ -2,14 +2,17 @@
 Flask Web应用程序 - TechCrunch X广告格式新闻阅读器
 Flask Web Application - TechCrunch X Ad Format News Reader
 """
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, Response
 import logging
 from typing import List, Optional
+from functools import wraps
 
 import config
 from models import Article, SearchResult
 from scraper import TechCrunchScraper
 import utils
+from rss_generator import generate_rss_feed, generate_atom_feed
+from bookmarks import get_bookmark_manager, BookmarkManager
 
 # 配置日志 / Configure logging
 logging.basicConfig(
@@ -18,12 +21,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def require_api_key(f):
+    """API密钥验证装饰器 / API key verification decorator"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not config.API_KEY_ENABLED:
+            return f(*args, **kwargs)
+
+        api_key = request.headers.get(config.API_KEY_HEADER)
+        if not api_key or api_key != config.API_KEY:
+            return jsonify({'error': 'Invalid or missing API key'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 # 创建Flask应用 / Create Flask app
 app = Flask(__name__)
 app.secret_key = 'techcrunch-x-ad-format-secret-key'
 
 # 初始化抓取器 / Initialize scraper
 scraper = TechCrunchScraper()
+
+# 初始化书签管理器 / Initialize bookmark manager
+bookmark_manager = get_bookmark_manager()
 
 # 全局文章缓存 / Global article cache
 _articles_cache: List[Article] = []
@@ -177,6 +198,192 @@ def export_articles():
         'success': True,
         'filepath': filepath,
         'total': len(_articles_cache)
+    })
+
+
+# RSS Feed 端点 / RSS Feed endpoints
+@app.route('/feed')
+def rss_feed():
+    """RSS订阅源 / RSS feed"""
+    global _articles_cache
+
+    try:
+        _articles_cache = scraper.fetch_articles(use_cache=True)
+    except Exception as e:
+        logger.error(f"获取RSS数据失败: {e}")
+
+    rss_xml = generate_rss_feed(_articles_cache)
+    return Response(rss_xml, mimetype='application/rss+xml')
+
+
+@app.route('/feed/atom')
+def atom_feed():
+    """Atom订阅源 / Atom feed"""
+    global _articles_cache
+
+    try:
+        _articles_cache = scraper.fetch_articles(use_cache=True)
+    except Exception as e:
+        logger.error(f"获取Atom数据失败: {e}")
+
+    atom_xml = generate_atom_feed(_articles_cache)
+    return Response(atom_xml, mimetype='application/atom+xml')
+
+
+# 书签端点 / Bookmark endpoints
+@app.route('/bookmarks')
+def list_bookmarks():
+    """显示所有书签 / List all bookmarks"""
+    bookmarks = bookmark_manager.get_all_bookmarks()
+    return render_template(
+        'index.html',
+        articles=[],  # No articles, just bookmarks
+        bookmarks=bookmarks,
+        query='',
+        page=1,
+        total=len(bookmarks),
+        per_page=config.ARTICLES_PER_PAGE
+    )
+
+
+@app.route('/bookmark/add', methods=['POST'])
+def add_bookmark():
+    """添加书签 / Add bookmark"""
+    data = request.get_json() or {}
+    url = data.get('url', '')
+    title = data.get('title', '')
+    notes = data.get('notes', '')
+
+    if not url or not title:
+        return jsonify({'error': 'Missing url or title'}), 400
+
+    success = bookmark_manager.add_bookmark(url, title, notes)
+    return jsonify({
+        'success': success,
+        'message': 'Bookmark added' if success else 'Bookmark already exists'
+    })
+
+
+@app.route('/bookmark/remove', methods=['POST'])
+def remove_bookmark():
+    """移除书签 / Remove bookmark"""
+    data = request.get_json() or {}
+    url = data.get('url', '')
+
+    if not url:
+        return jsonify({'error': 'Missing url'}), 400
+
+    success = bookmark_manager.remove_bookmark(url)
+    return jsonify({
+        'success': success,
+        'message': 'Bookmark removed' if success else 'Bookmark not found'
+    })
+
+
+@app.route('/api/bookmarks')
+@require_api_key
+def api_bookmarks():
+    """API端点 - 获取所有书签 / API endpoint - get all bookmarks"""
+    bookmarks = bookmark_manager.get_all_bookmarks()
+    return jsonify({
+        'total': len(bookmarks),
+        'bookmarks': [b.to_dict() for b in bookmarks]
+    })
+
+
+@app.route('/api/bookmark/<path:url>')
+@require_api_key
+def api_check_bookmark(url):
+    """API端点 - 检查书签状态 / API endpoint - check bookmark status"""
+    from urllib.parse import unquote
+    url = unquote(url)
+    is_bookmarked = bookmark_manager.is_bookmarked(url)
+    return jsonify({
+        'url': url,
+        'bookmarked': is_bookmarked
+    })
+
+
+# 增强搜索API端点 / Enhanced search API endpoint
+@app.route('/api/advanced-search')
+@require_api_key
+def api_advanced_search():
+    """API端点 - 高级搜索 / API endpoint - advanced search"""
+    global _articles_cache
+
+    # 获取查询参数 / Get query parameters
+    query = request.args.get('q', '')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
+    sort_by = request.args.get('sort', 'date')  # date, title, source
+    order = request.args.get('order', 'desc')  # asc, desc
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', config.ARTICLES_PER_PAGE))
+
+    if not _articles_cache:
+        try:
+            _articles_cache = scraper.fetch_articles(use_cache=True)
+        except Exception as e:
+            logger.error(f"高级搜索失败: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    # 过滤 / Filter
+    filtered = _articles_cache
+    if query:
+        result = utils.search_articles(filtered, query)
+        filtered = result.articles
+
+    if start_date or end_date:
+        filtered = utils.filter_articles_by_date(filtered, start_date or None, end_date or None)
+
+    # 排序 / Sort
+    descending = order == 'desc'
+    filtered = utils.sort_articles(filtered, sort_by, descending)
+
+    # 分页 / Paginate
+    pagination = utils.paginate_articles(filtered, page, per_page)
+
+    return jsonify({
+        'query': query,
+        'total': len(filtered),
+        'page': page,
+        'per_page': per_page,
+        'articles': [a.to_dict() for a in pagination['articles']],
+        'filters': {
+            'start_date': start_date,
+            'end_date': end_date,
+            'sort_by': sort_by,
+            'order': order
+        }
+    })
+
+
+# 统计信息端点 / Statistics endpoint
+@app.route('/api/stats')
+@require_api_key
+def api_stats():
+    """API端点 - 获取统计信息 / API endpoint - get statistics"""
+    global _articles_cache
+
+    try:
+        if not _articles_cache:
+            _articles_cache = scraper.fetch_articles(use_cache=True)
+    except Exception as e:
+        logger.error(f"获取统计失败: {e}")
+
+    bookmarks_count = bookmark_manager.get_bookmarks_count()
+
+    return jsonify({
+        'articles': {
+            'total': len(_articles_cache)
+        },
+        'bookmarks': {
+            'total': bookmarks_count
+        },
+        'cache': {
+            'enabled': config.CACHE_ENABLED,
+            'timeout': config.CACHE_TIMEOUT
+        }
     })
 
 

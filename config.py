@@ -33,3 +33,11 @@ DATA_FILE = 'articles.json'
 
 # 分页配置
 ARTICLES_PER_PAGE = 10
+
+# 书签配置
+BOOKMARKS_FILE = 'bookmarks.json'
+
+# API密钥配置 (用于保护API端点)
+API_KEY_ENABLED = False  # 设置为True启用API密钥验证
+API_KEY = 'your-secret-api-key-change-this'
+API_KEY_HEADER = 'X-API-Key'

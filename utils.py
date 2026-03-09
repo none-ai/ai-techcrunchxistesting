@@ -239,3 +239,68 @@ def sort_articles_by_date(articles: List[Article], descending: bool = True) -> L
             return datetime.min
 
     return sorted(articles, key=get_date, reverse=descending)
+
+
+def filter_articles_by_date(articles: List[Article], start_date: str = None, end_date: str = None) -> List[Article]:
+    """按日期范围过滤文章 / Filter articles by date range
+
+    Args:
+        articles: 文章列表 / Article list
+        start_date: 开始日期 (ISO格式) / Start date (ISO format)
+        end_date: 结束日期 (ISO格式) / End date (ISO format)
+
+    Returns:
+        过滤后的文章列表 / Filtered article list
+    """
+    if not start_date and not end_date:
+        return articles
+
+    filtered = []
+    for article in articles:
+        try:
+            article_date = None
+            if 'T' in article.published_at:
+                article_date = datetime.fromisoformat(article.published_at.replace('Z', '+00:00'))
+
+            if not article_date:
+                continue
+
+            # 检查开始日期 / Check start date
+            if start_date:
+                start = datetime.fromisoformat(start_date)
+                if article_date < start:
+                    continue
+
+            # 检查结束日期 / Check end date
+            if end_date:
+                end = datetime.fromisoformat(end_date)
+                if article_date > end:
+                    continue
+
+            filtered.append(article)
+
+        except (ValueError, AttributeError):
+            continue
+
+    return filtered
+
+
+def sort_articles(articles: List[Article], sort_by: str = 'date', descending: bool = True) -> List[Article]:
+    """对文章进行排序 / Sort articles
+
+    Args:
+        articles: 文章列表 / Article list
+        sort_by: 排序字段 (date/title/source) / Sort field (date/title/source)
+        descending: 是否降序 / Whether descending
+
+    Returns:
+        排序后的文章列表 / Sorted article list
+    """
+    if sort_by == 'date':
+        return sort_articles_by_date(articles, descending)
+    elif sort_by == 'title':
+        return sorted(articles, key=lambda a: a.title.lower(), reverse=descending)
+    elif sort_by == 'source':
+        return sorted(articles, key=lambda a: a.source.lower(), reverse=descending)
+    else:
+        return articles
