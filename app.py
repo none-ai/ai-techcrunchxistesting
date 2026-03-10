@@ -2,8 +2,9 @@
 Flask Web应用程序 - TechCrunch X广告格式新闻阅读器
 Flask Web Application - TechCrunch X Ad Format News Reader
 """
-from flask import Flask, render_template, request, jsonify, redirect, url_for, Response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, Response, g
 import logging
+import uuid
 from typing import List, Optional
 from functools import wraps
 
@@ -20,6 +21,28 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+# 创建Flask应用 / Create Flask app
+app = Flask(__name__)
+app.secret_key = 'techcrunch-x-ad-format-secret-key'
+
+# Request ID middleware
+@app.before_request
+def before_request():
+    g.request_id = str(uuid.uuid4())[:8]
+    logger.info(f"[{g.request_id}] {request.method} {request.path}")
+
+@app.after_request
+def after_request(response):
+    logger.info(f"[{g.request_id}] Status: {response.status_code}")
+    response.headers['X-Request-ID'] = g.request_id
+    return response
+
+# Health check endpoint
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'healthy', 'request_id': g.request_id}), 200
 
 
 def require_api_key(f):
